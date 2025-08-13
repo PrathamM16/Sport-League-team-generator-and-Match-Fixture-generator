@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSL Team Maker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-logo">
+        <img src="TriviumLogo.png" alt="Trivium Logo" onerror="this.style.display='none'">
+      </div>
+      <div class="header-text">
+        <h1>🏆 TSL Teamify Champion’s 🏆</h1>
+        <p>Upload Excel file to automatically generate balanced teams</p>
+      </div>
+      <div class="header-logo">
+        <img src="TSL-Logo2.png" alt="TSL Logo" onerror="this.style.display='none'">
+      </div>
+    </div>
+
+    <!-- Animation Container -->
+    <div class="animation-container" id="animationContainer">
+      <div class="team-creation-animation">
+        <div class="animation-header">
+          <div class="processing-spinner"></div>
+          <div>🎯 Creating Balanced Teams...</div>
+        </div>
+        <div class="teams-row" id="animationTeamsRow">
+          <div class="team-column">
+            <div class="team-column-header">Team Alpha</div>
+            <div class="team-spinner"></div>
+            <div class="team-members" id="animAlpha"></div>
+          </div>
+          <div class="team-column">
+            <div class="team-column-header">Team Beta</div>
+            <div class="team-spinner"></div>
+            <div class="team-members" id="animBeta"></div>
+          </div>
+          <div class="team-column">
+            <div class="team-column-header">Team Gamma</div>
+            <div class="team-spinner"></div>
+            <div class="team-members" id="animGamma"></div>
+          </div>
+          <div class="team-column">
+            <div class="team-column-header">Team Delta</div>
+            <div class="team-spinner"></div>
+            <div class="team-members" id="animDelta"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Loading -->
+    <div id="loading" class="loading hidden">
+      <div class="main-spinner"></div>
+      <div class="loading-text">Processing Excel File...</div>
+      <div class="loading-subtext">Please wait while we analyze your data</div>
+    </div>
+
+    <div class="content">
+      <div class="upload-section" id="uploadSection">
+        <div class="upload-icon">📊</div>
+        <h3>Upload Excel File</h3>
+        <p>Select an Excel file with columns: Sl No, Male, Female, Interns</p>
+        <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+        <p>Or drag and drop your file here</p>
+      </div>
+
+      <div id="errorMessage" class="error-message hidden"></div>
+      <div id="successMessage" class="success-message hidden"></div>
+
+      <div id="statsSection" class="hidden">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-number" id="totalEmployees">0</div>
+            <div class="stat-label">Total People</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="totalMale">0</div>
+            <div class="stat-label">Male Employees</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="totalFemale">0</div>
+            <div class="stat-label">Female Employees</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="totalInterns">0</div>
+            <div class="stat-label">Interns</div>
+          </div>
+        </div>
+        <button class="download-btn" onclick="downloadResults()">📥 Download Team Results</button>
+      </div>
+
+      <div id="teamsContainer" class="teams-container hidden"></div>
+
+      <!-- Tournament Type Selection -->
+      <div class="tournament-type-selection" style="background: white; border-radius: 15px; padding: 30px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; color: #2c3e50; margin-bottom: 25px;">🏆 Select Tournament Format</h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+          <div class="tournament-option" onclick="selectTournamentType('8team')" id="option8team" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.3s ease; border: 3px solid transparent;">
+            <h3 style="margin-bottom: 15px;">8-Team Tournament</h3>
+            <p style="margin-bottom: 15px;">2 Sub-teams per Main Team</p>
+            <div style="font-size: 2em; margin: 10px 0;">🏟️</div>
+            <div style="font-size: 0.9em; opacity: 0.9;">QF → SF → Final</div>
+          </div>
+
+          <div class="tournament-option" onclick="selectTournamentType('16team')" id="option16team" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 25px; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.3s ease; border: 3px solid transparent;">
+            <h3 style="margin-bottom: 15px;">16-Team Tournament</h3>
+            <p style="margin-bottom: 15px;">4 Sub-teams per Main Team</p>
+            <div style="font-size: 2em; margin: 10px 0;">🏟️🏟️</div>
+            <div style="font-size: 0.9em; opacity: 0.9;">R16 → QF → SF → Final</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8-Team Fixture Section -->
+      <div id="fixture8Section" class="fixture-section hidden">
+        <div class="fixture-header">
+          <h2>🏟️ 8-Team Tournament Generator</h2>
+          <p>Create fixtures from 2 sub-teams per main team</p>
+        </div>
+
+        <div class="fixture-input-section">
+          <div class="teams-input">
+            <h3>Enter Player Names (8 Teams)</h3>
+
+            <div class="sub-teams-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
+              <div class="sub-team-input">
+                <h4>Alpha Team</h4>
+                <div style="margin-bottom: 15px;">
+                  <label>Alpha-1:</label>
+                  <textarea id="alpha1_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+                <div>
+                  <label>Alpha-2:</label>
+                  <textarea id="alpha2_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Beta Team</h4>
+                <div style="margin-bottom: 15px;">
+                  <label>Beta-1:</label>
+                  <textarea id="beta1_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+                <div>
+                  <label>Beta-2:</label>
+                  <textarea id="beta2_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Gamma Team</h4>
+                <div style="margin-bottom: 15px;">
+                  <label>Gamma-1:</label>
+                  <textarea id="gamma1_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+                <div>
+                  <label>Gamma-2:</label>
+                  <textarea id="gamma2_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Delta Team</h4>
+                <div style="margin-bottom: 15px;">
+                  <label>Delta-1:</label>
+                  <textarea id="delta1_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+                <div>
+                  <label>Delta-2:</label>
+                  <textarea id="delta2_8" placeholder="Enter player names (one per line)"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="controls-panel">
+            <h3>Controls</h3>
+            <button onclick="autoFill8Teams()" class="control-btn auto-fill-btn">Auto-fill from Main Teams</button>
+            <button onclick="create8TeamFixtures()" class="control-btn create-fixtures-btn">🏆 Create 8-Team Tournament</button>
+          </div>
+        </div>
+
+        <div id="fixture8Error" class="error-message hidden"></div>
+        <div id="fixtures8Result" class="hidden"></div>
+      </div>
+
+      <!-- 16-Team Fixture Section -->
+      <div id="fixture16Section" class="fixture-section hidden">
+        <div class="fixture-header">
+          <h2>🏟️ 16-Team Tournament Generator</h2>
+          <p>Create fixtures from 4 sub-teams per main team</p>
+        </div>
+
+        <div class="fixture-input-section">
+          <div class="teams-input">
+            <h3>Enter Player Names (16 Teams)</h3>
+
+            <div class="sub-teams-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+              <div class="sub-team-input">
+                <h4>Alpha Team</h4>
+                <div style="margin-bottom: 10px;"><label>Alpha-1:</label><textarea id="alpha1_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Alpha-2:</label><textarea id="alpha2_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Alpha-3:</label><textarea id="alpha3_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div><label>Alpha-4:</label><textarea id="alpha4_16" placeholder="Enter player names (one per line)"></textarea></div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Beta Team</h4>
+                <div style="margin-bottom: 10px;"><label>Beta-1:</label><textarea id="beta1_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Beta-2:</label><textarea id="beta2_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Beta-3:</label><textarea id="beta3_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div><label>Beta-4:</label><textarea id="beta4_16" placeholder="Enter player names (one per line)"></textarea></div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Gamma Team</h4>
+                <div style="margin-bottom: 10px;"><label>Gamma-1:</label><textarea id="gamma1_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Gamma-2:</label><textarea id="gamma2_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Gamma-3:</label><textarea id="gamma3_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div><label>Gamma-4:</label><textarea id="gamma4_16" placeholder="Enter player names (one per line)"></textarea></div>
+              </div>
+
+              <div class="sub-team-input">
+                <h4>Delta Team</h4>
+                <div style="margin-bottom: 10px;"><label>Delta-1:</label><textarea id="delta1_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Delta-2:</label><textarea id="delta2_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div style="margin-bottom: 10px;"><label>Delta-3:</label><textarea id="delta3_16" placeholder="Enter player names (one per line)"></textarea></div>
+                <div><label>Delta-4:</label><textarea id="delta4_16" placeholder="Enter player names (one per line)"></textarea></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="controls-panel">
+            <h3>Controls</h3>
+            <button onclick="autoFill16Teams()" class="control-btn auto-fill-btn">Auto-fill from Main Teams</button>
+            <button onclick="create16TeamFixtures()" class="control-btn create-fixtures-btn">🏆 Create 16-Team Tournament</button>
+          </div>
+        </div>
+
+        <div id="fixture16Error" class="error-message hidden"></div>
+        <div id="fixtures16Result" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>🏆 About TSL</h3>
+            <p>Trivium Sports League (TSL) Team Generator helps you create balanced, competitive teams for tournaments. Our advanced algorithm ensures fair play and exciting matches.</p>
+            <div class="social-links">
+                <a href="#" title="Facebook">📘</a>
+                <a href="#" title="Twitter">🐦</a>
+                <a href="#" title="Instagram">📷</a>
+                <a href="#" title="LinkedIn">💼</a>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <h3>⚡ Features</h3>
+            <ul>
+                <li>• Automated team balancing</li>
+                <li>• Excel file integration</li>
+                <li>• Multiple tournament formats</li>
+                <li>• Gender-balanced teams</li>
+                <li>• Real-time team generation</li>
+                <li>• Export capabilities</li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h3>📞 Support</h3>
+            <ul>
+                <li>📧 Email: support@tsl-generator.com</li>
+                <li>📱 Phone: +91 9876543210</li>
+                <li>💬 Live Chat: Available 24/7</li>
+                <li>📋 <a href="#">User Guide</a></li>
+                <li>❓ <a href="#">FAQ</a></li>
+                <li>🔧 <a href="#">Technical Support</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h3>🔗 Quick Links</h3>
+            <ul>
+                <li><a href="#">🏠 Home</a></li>
+                <li><a href="#">📊 Tournament Formats</a></li>
+                <li><a href="#">📈 Statistics</a></li>
+                <li><a href="#">⚙️ Settings</a></li>
+                <li><a href="#">📱 Mobile App</a></li>
+                <li><a href="#">🆕 What's New</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2025 Trivium Sports League. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Policy</a>
+            <a href="#">Accessibility</a>
+        </div>
+    </div>
+</footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
